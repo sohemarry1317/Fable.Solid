@@ -1,0 +1,63 @@
+using SolidWorks.Interop.sldworks;
+using SolidWorks.Interop.swconst;
+using System;
+
+namespace BracketGenerator
+{
+    public class BracketGenerator
+    {
+        private SldWorks swApp;
+        private ModelDoc2 swModel;
+        private SketchManager swSketchMgr;
+
+        public BracketGenerator()
+        {
+            swApp = new SldWorks();
+            swModel = swApp.NewDocument("Part", (int)swDwgTemplates_e.swDwgTemplateA1size, 0, 0);
+            swModel.InsertSketch2(0, 0);
+            swSketchMgr = (SketchManager)swModel.SketchManager;
+        }
+
+        public void GenerateBracket(double length, double width, double thickness, double holeDiameter)
+        {
+            if (length <= 0 || width <= 0 || thickness <= 0 || holeDiameter <= 0)
+            {
+                throw new ArgumentException("All dimensions must be positive and non-zero.");
+            }
+
+            double bracketLength = length;
+            double bracketWidth = width;
+            double bracketThickness = thickness;
+            double holeDiam = holeDiameter;
+            double holePositionX = bracketLength / 2;
+            double holePositionY = bracketWidth / 2;
+
+            // Create the bracket base sketch
+            swSketchMgr.SketchRectangle(0, 0, 0, bracketLength, bracketWidth, 0);
+            Feature sketchFeature = swModel.FeatureManager.FeatureExtrusion2(true, false, false,
+                (int)swEndConditions_e.swEndCondBlind, (int)swEndConditions_e.swEndCondBlind,
+                bracketThickness, 0, false, false, false, false, 0, 0, false, false, false, false,
+                false, true, true, true, 0, 0, false);
+
+            // Create the hole sketch
+            swModel.ClearSelection2(true);
+            swSketchMgr.InsertSketch(true);
+            swSketchMgr.SketchCircleByCenterRadius(holePositionX, holePositionY, 0, holeDiam / 2);
+            Feature holeSketchFeature = swModel.FeatureManager.FeatureCut3(true, false, false,
+                (int)swEndConditions_e.swEndCondBlind, (int)swEndConditions_e.swEndCondBlind,
+                bracketThickness, 0, false, false, false, false, 0, 0, false, false, false, false,
+                false, true, true, true, false, false);
+            swModel.ClearSelection2(true);
+
+            swModel.SaveAs3("C:\\Bracket.SLDPRT", 0, (int)swSaveAsVersion_e.swSaveAsCurrentVersion,
+                (int)swSaveAsOptions_e.swSaveAsOptions_Silent, null, null);
+            swModel.ClearSelection2(true);
+        }
+
+        public void CloseDocument()
+        {
+            swModel.Close();
+            swApp.ExitApp();
+        }
+    }
+}
